@@ -1,6 +1,6 @@
 // 1. INICIALIZAR SUPABASE CLIENT
-const SUPABASE_URL = "SUA_URL_SUPABASE_AQUI";
-const SUPABASE_KEY = "SUA_CHAVE_ANON_AQUI";
+const SUPABASE_URL = "https://fdcxcuyxrgbpmcrryiof.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY3hjdXl4cmdicG1jcnJ5aW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTk5NTMsImV4cCI6MjA4OTY5NTk1M30.AGRudVkfcFNGTftdV02NA3Xz6Xs1WzYruqCWLVnF-Rw";
 
 // Criação do client do Supabase (A biblioteca importada no HTML viabiliza o 'window.supabase')
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -25,7 +25,7 @@ async function checarSessao() {
 // 4. LÓGICA DE LOGIN
 async function realizarLogin(event) {
     event.preventDefault();
-    
+
     const email = document.getElementById('inputEmail').value;
     const senha = document.getElementById('inputSenha').value;
     const btnLogin = document.getElementById('btnLogin');
@@ -67,15 +67,15 @@ async function realizarLogout() {
 // 6. LÓGICA DE INSERÇÃO DE DADOS (CADASTRAR PROCESSO)
 async function cadastrarProcesso(event) {
     event.preventDefault(); // Impede o recarregamento natural do form
-    
+
     const btnSalvar = document.getElementById('btnSalvar');
     const alertBox = document.getElementById('cadastroAlert');
-    
+
     btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
     btnSalvar.disabled = true;
 
     const tabelaSelecionada = document.getElementById('cadTabela').value;
-    
+
     // Preparação do Pacote de Dados
     const dadosProcesso = {
         nome: document.getElementById('cadNome').value.trim().toUpperCase(),
@@ -90,7 +90,7 @@ async function cadastrarProcesso(event) {
     // Comando de Insert Protegido (Automático via JWT nativo Supabase)
     const { data, error } = await supabase
         .from(tabelaSelecionada)
-        .insert([dadosProcesso]); 
+        .insert([dadosProcesso]);
 
     if (error) {
         alertBox.className = 'alert alert-danger floating-alert fw-bold small';
@@ -101,7 +101,7 @@ async function cadastrarProcesso(event) {
         alertBox.className = 'alert alert-success floating-alert fw-bold small';
         alertBox.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Processo cadastrado com sucesso! Segurança aprovada.';
         alertBox.style.display = 'block';
-        
+
         // Limpar o formulário base para facilitar o próximo cadastro continuo
         document.getElementById('cadNome').value = "";
         document.getElementById('cadTema').value = "";
@@ -113,7 +113,7 @@ async function cadastrarProcesso(event) {
     // Resetar Botão
     btnSalvar.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-2"></i> Gravar no Banco';
     btnSalvar.disabled = false;
-    
+
     // Esconder o balão após 5 segundos
     setTimeout(() => { alertBox.style.display = 'none'; }, 5000);
 }
@@ -121,7 +121,7 @@ async function cadastrarProcesso(event) {
 // 7. LISTENERS DE EVENTOS (Prendendo a lógica na Página)
 document.addEventListener("DOMContentLoaded", () => {
     checarSessao();
-    if(formLogin) formLogin.addEventListener("submit", realizarLogin);
-    if(formCadastro) formCadastro.addEventListener("submit", cadastrarProcesso);
-    if(btnSair) btnSair.addEventListener("click", realizarLogout);
+    if (formLogin) formLogin.addEventListener("submit", realizarLogin);
+    if (formCadastro) formCadastro.addEventListener("submit", cadastrarProcesso);
+    if (btnSair) btnSair.addEventListener("click", realizarLogout);
 });
