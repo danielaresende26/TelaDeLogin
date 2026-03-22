@@ -123,8 +123,15 @@ document.addEventListener("DOMContentLoaded", () => {
     formCadastro = document.getElementById('formCadastro');
     btnSair = document.getElementById('btnSair');
 
-    checarSessao();
+    // Sempre registre os eventos primeiro! Assim o formulário nunca recarrega a página por acidente.
     if (formLogin) formLogin.addEventListener("submit", realizarLogin);
     if (formCadastro) formCadastro.addEventListener("submit", cadastrarProcesso);
     if (btnSair) btnSair.addEventListener("click", realizarLogout);
+
+    // Depois execute conferências que podem dar erro
+    try {
+        checarSessao();
+    } catch (e) {
+        console.error("Erro ao checar sessão:", e);
+    }
 });
