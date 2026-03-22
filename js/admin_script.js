@@ -78,6 +78,7 @@ async function cadastrarProcesso(event) {
         tema: document.getElementById('cadTema').value.trim().toUpperCase(),
         status: document.getElementById('cadStatus').value,
         data_entrada: document.getElementById('cadDataEntrada').value,
+        data_saida: document.getElementById('cadDataSaida').value || null,
         protocolo: document.getElementById('cadProtocolo').value.trim().toUpperCase(),
         escola: document.getElementById('cadEscola').value.trim().toUpperCase(),
         observacoes: document.getElementById('cadObservacoes').value.trim()
@@ -103,6 +104,7 @@ async function cadastrarProcesso(event) {
         document.getElementById('cadTema').value = "";
         document.getElementById('cadObservacoes').value = "";
         document.getElementById('cadProtocolo').value = "";
+        document.getElementById('cadDataSaida').value = "";
         document.getElementById('cadNome').focus();
     }
 
