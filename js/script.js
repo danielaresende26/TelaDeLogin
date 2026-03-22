@@ -223,13 +223,11 @@ async function consultarProcesso() {
         let filaAtivaVTC = [];
         if (temVTCAtivo) {
             try {
-                // Consulta Direta Fila VTC Supabase
-                const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&status=ilike.%25andamento%25&select=*`, { method: 'GET', headers: defaultHeaders });
+                // Consulta Direta Fila VTC Supabase, agrupando os que estão pendentes na fila geral
+                const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&or=(status.ilike.*lise*,status.ilike.*andamento*,status.ilike.*exig*)&select=*`, { method: 'GET', headers: defaultHeaders });
                 if (resFila.ok) {
                     const todosVtc = await resFila.json();
-                    // O endpoint /queue já traz apenas os válidos "Em andamento" da tabela SEFREP ordenados
                     filaAtivaVTC = todosVtc;
-                    // Ordenação: data_entrada, se for do mesmo dia usa-se data de inclusão no banco (created_at)
                     filaAtivaVTC.sort((a, b) => {
                         const d1 = new Date(a.data_entrada || 0).getTime();
                         const d2 = new Date(b.data_entrada || 0).getTime();
@@ -294,7 +292,7 @@ async function consultarProcesso() {
 
             // Definindo a cor e ícone baseando-se no STATUS
             const stLower = (processo.status || "").toLowerCase();
-            const isEmAndamentoStatus = stLower === "em analise" || stLower === "em andamento" || stLower === "análise" || stLower === "andamento" || stLower.includes("exigencia") || stLower.includes("exigência") || stLower.includes("atendendo");
+            const isEmAndamentoStatus = stLower.includes("análise") || stLower.includes("analise") || stLower.includes("andamento") || stLower.includes("exigencia") || stLower.includes("exigência") || stLower.includes("atendendo");
 
             let classeCorLateral = isEmAndamentoStatus ? "border-left-warning" : "border-left-primary";
             let corBadge = isEmAndamentoStatus ? "bg-warning text-dark" : "bg-primary";
@@ -302,22 +300,25 @@ async function consultarProcesso() {
             let statusDisplay = (processo.status || "EM ANÁLISE").toUpperCase();
 
             // Override finalizado, devolvido, nao faz jus
-            if (stLower.includes("finalizado") || stLower.includes("concluido") || stLower.includes("concluída")) {
+            if (stLower.includes("finalizado") || stLower.includes("concluido") || stLower.includes("concluída") || stLower.includes("concluído")) {
                 classeCorLateral = "border-left-success";
                 corBadge = "bg-success";
                 iconeBadge = "bi-check-circle-fill";
                 statusDisplay = "FINALIZADO";
             } else if (stLower.includes("devolvido") || stLower.includes("correção") || stLower.includes("correcao") || stLower.includes("pendente") || isRealmenteDevolvido) {
-                classeCorLateral = "border-left-danger"; // Danger para não conflitar com andamento
-                corBadge = "bg-danger";
+                classeCorLateral = "border-left-warning"; // Original era Amarelo (Warning) e não Danger
+                corBadge = "bg-warning text-dark";
                 iconeBadge = "bi-arrow-return-left";
                 statusDisplay = "DEVOLVIDO / PENDÊNCIA";
             } else if (stLower.includes("não faz jus") || stLower.includes("nao faz jus") || stLower.includes("indeferido") || isNaoFazJus) {
-                classeCorLateral = "border-left-dark"; // Dark para différenciar
-                corBadge = "bg-dark";
+                classeCorLateral = "border-left-danger"; // Original era Vermelho (Danger) e não Dark
+                corBadge = "bg-danger";
                 iconeBadge = "bi-x-circle-fill";
                 statusDisplay = "NÃO FAZ JUS";
             }
+            
+            // Fix para separar a cor pura do Bootstrap ('primary', 'warning', etc)
+            const nomeCorBase = corBadge.replace('bg-', '').replace(' text-dark', '');
 
             // Exibição da Unidade Escolar ou Setor
             let exibicaoEscola = escola || "SUA UNIDADE ESCOLAR";
@@ -359,17 +360,20 @@ async function consultarProcesso() {
 
             // --- LÓGICA DE FILA INJETADA NO CABEÇALHO PARA VTC ---
             let infoFilaHtml = "";
+            let dataEntradaRealVTC = dataEntrada ? new Date(processo.data_entrada) : new Date();
+
             if (isEmAnaliseVTC && filaAtivaVTC.length > 0) {
                 const indexNaFila = filaAtivaVTC.findIndex(p => p.id === processo.id);
                 if (indexNaFila >= 0) {
                     const posicaoReal = indexNaFila + 1;
                     
-                    // Média de análise aplicada entre 30 a 120 dias (baseado na posição da fila)
-                    let mediaDias = Math.floor(30 + (posicaoReal * 2.5));
-                    if (mediaDias > 120) mediaDias = 120;
+                    const diasDecorridos = Math.floor((new Date() - dataEntradaRealVTC) / (1000 * 60 * 60 * 24));
+                    let diasEst = 60 + Math.floor((indexNaFila >= 0 ? indexNaFila : 0) * 0.25) - diasDecorridos;
+                    if (diasEst > 120) diasEst = 120;
+                    if (diasEst < 30) diasEst = 30;
                     
                     const dataPrevisao = new Date();
-                    dataPrevisao.setDate(dataPrevisao.getDate() + mediaDias);
+                    dataPrevisao.setDate(dataPrevisao.getDate() + diasEst);
                     const dd = String(dataPrevisao.getDate()).padStart(2, '0');
                     const mm = String(dataPrevisao.getMonth() + 1).padStart(2, '0');
                     const yy = String(dataPrevisao.getFullYear()).slice(-2);
@@ -461,8 +465,8 @@ async function consultarProcesso() {
                                     <p class="mb-0 small text-dark" style="line-height: 1.6;"><strong>Próxima Ação Necessária:</strong> Para que a sua aposentadoria seja publicada em Diário Oficial, procure imediatamente a secretaria da sua Unidade Escolar e formalize o pedido final de concessão (Trâmite de Aposentadoria).</p>
                                 </div>
                             ` : `
-                                <div class="p-3 shadow-sm border-${corBadge.replace('bg-', '')}-subtle bg-${corBadge.replace('bg-', '')}-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
-                                    <h6 class="fw-bold text-${corBadge.replace('bg-', '').replace(' text-dark', '')} mb-2" style="font-size: 0.9rem;"><i class="bi bi-chat-left-text-fill me-1"></i> OBSERVAÇÃO:</h6>
+                                <div class="p-3 shadow-sm border-${nomeCorBase}-subtle bg-${nomeCorBase}-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-${nomeCorBase}-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-chat-left-text-fill me-1"></i> OBSERVAÇÃO:</h6>
                                     <p class="small text-dark mb-0" style="line-height: 1.6;">
                                         <i>"${obsLimpa || 'Sem detalhes adicionais disponíveis.'}"</i>
                                     </p>
